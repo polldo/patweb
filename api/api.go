@@ -37,7 +37,7 @@ func APIMux(cfg APIConfig) http.Handler {
 	a.mw = append(a.mw, middleware.Errors(cfg.Log))
 	a.mw = append(a.mw, middleware.Panics())
 
-	a.Handle(http.MethodGet, "/health", handler.Health())
+	a.Handle(http.MethodPost, "/demo", handler.Demo())
 
 	return a.Router
 }

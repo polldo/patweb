@@ -53,7 +53,7 @@ func Fields(f map[string]interface{}) ErrOpt {
 // to build and log an appropriate HTTP error response.
 //
 // This function should be used when handlers encounter expected errors.
-func NewRequestError(err error, msg string, status int, opts ...ErrOpt) error {
+func NewRequestError(err error, status int, opts ...ErrOpt) error {
 	e := &RequestError{Err: err, Status: status}
 	for _, opt := range opts {
 		opt(e)
@@ -70,8 +70,12 @@ func (r *RequestError) Error() string {
 // Response converts and returns the error in a body and status code
 // to be written as response to vernemq.
 func (r *RequestError) Response() (body interface{}, code int) {
+	err := r.Err.Error()
+	if r.Msg != "" {
+		err = r.Msg
+	}
 	return &ErrorResponse{
-		Error:  r.Err.Error(),
+		Error:  err,
 		Status: http.StatusText(r.Status),
 	}, r.Status
 }
@@ -86,11 +90,3 @@ func (r *RequestError) Info() bool {
 func (r *RequestError) Fields() map[string]interface{} {
 	return r.LogFields
 }
-
-// func NewUnauthorizedError(err error, opts ...ErrOpt) error {
-// 	e := &RequestError{Err: err, Msg: "not authorized", Status: http.StatusBadRequest}
-// 	for _, opt := range opts {
-// 		opt(e)
-// 	}
-// 	return e
-// }
