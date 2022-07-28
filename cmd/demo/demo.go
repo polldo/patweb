@@ -72,4 +72,12 @@ func consume(log logrus.FieldLogger, host string) {
 	// Post for an error not masked response.
 	s, b = post(pload{Value: "dont mask"})
 	log.Infof("Response: status %d, body %s", s, string(b))
+
+	// Post for an error with additional fields.
+	s, b = post(pload{Value: "log fields"})
+	log.Infof("Response: status %d, body %s", s, string(b))
+
+	// Post for a quiet error.
+	s, b = post(pload{Value: "be quiet"})
+	log.Infof("Response: status %d, body %s", s, string(b))
 }

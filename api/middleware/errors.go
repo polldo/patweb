@@ -9,14 +9,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Info indicates if the error is informative (non critical)
-// and it should be logged with Info level rather than Err.
-// If the error does not implement the Info behavior, it returns
-// false.
-func Info(err error) bool {
-	var infoErr interface{ Info() bool }
-	if errors.As(err, &infoErr) {
-		return infoErr.Info()
+// Quiet indicates whether the error should not be logged as an error.
+// This is useful to deal with physiological errors - like token expirations - that
+// are not interesting to log as errors (perhaps to avoid triggering any alarms) but
+// should be returned in the response anyway.
+// If the error does not implement the Queit behavior, it returns false.
+func Quiet(err error) bool {
+	var quietErr interface{ Quiet() bool }
+	if errors.As(err, &quietErr) {
+		return quietErr.Quiet()
 	}
 	return false
 }
@@ -72,7 +73,7 @@ func Errors(log logrus.FieldLogger) web.Middleware {
 
 			// Log the error with the appropriate level.
 			loglvl := log.WithFields(logrus.Fields(fields)).Error
-			if Info(err) {
+			if Quiet(err) {
 				loglvl = log.WithFields(logrus.Fields(fields)).Info
 			}
 			loglvl("ERROR")

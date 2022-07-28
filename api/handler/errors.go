@@ -16,13 +16,13 @@ type ErrorResponse struct {
 // 'Err' is the complete error description that will be logged, it will be returned in HTTP response if 'Msg' is empty.
 // 'Msg' is the text error that, if not empty, will be returned in the HTTP response.
 // 'Status' indicates the status code of the response to be built.
-// 'LogInfo' determines whether the error should be logged with the Info level.
+// 'Quiet' indicates that the error is not very relevant to be logged.
 // 'LogFields' contains the fields to be logged together with the error.
 type RequestError struct {
 	Err       error
 	Msg       string
 	Status    int
-	LogInfo   bool
+	IsQuiet   bool
 	LogFields map[string]interface{}
 }
 
@@ -35,15 +35,15 @@ func WithMsg(msg string) ErrOpt {
 	}
 }
 
-// Info sets the error as informative (to be logged with Info level).
-func Info() ErrOpt {
+// Quiet sets the error as quiet (not very relevant to be logged).
+func Quiet() ErrOpt {
 	return func(err *RequestError) {
-		err.LogInfo = true
+		err.IsQuiet = true
 	}
 }
 
-// Fields sets the error as empty.
-func Fields(f map[string]interface{}) ErrOpt {
+// WithFields sets custom fields to be added to the error log.
+func WithFields(f map[string]interface{}) ErrOpt {
 	return func(err *RequestError) {
 		err.LogFields = f
 	}
@@ -80,10 +80,9 @@ func (r *RequestError) Response() (body interface{}, code int) {
 	}, r.Status
 }
 
-// Info indicates whether the error is only informative (not critical)
-// and should be logged with Info level.
-func (r *RequestError) Info() bool {
-	return r.LogInfo
+// Quiet indicates whether the error is not very relevant to be logged.
+func (r *RequestError) Quiet() bool {
+	return r.IsQuiet
 }
 
 // Fields returns the fields to be logged together with the error.
