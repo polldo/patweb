@@ -2,44 +2,44 @@ package middleware
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/polldo/patweb/api/web"
 	"github.com/sirupsen/logrus"
 )
 
-// Quiet indicates whether the error should not be logged as an error.
+type quiet interface{ Quiet() bool }
+
+// IsQuiet indicates whether the error should not be logged as an error.
 // This is useful to deal with physiological errors - like token expirations - that
 // are not interesting to log as errors (perhaps to avoid triggering any alarms) but
 // should be returned in the response anyway.
 // If the error does not implement the Queit behavior, it returns false.
-func Quiet(err error) bool {
-	var quietErr interface{ Quiet() bool }
-	if errors.As(err, &quietErr) {
-		return quietErr.Quiet()
-	}
-	return false
+func IsQuiet(err error) bool {
+	qe, ok := err.(quiet)
+	return ok && qe.Quiet()
 }
+
+type fields interface{ Fields() map[string]interface{} }
 
 // Fields extracts fields to be logged together with the error.
 // If the error does not implement the Fields behavior, it returns
 // 'ok' to false and other parameters should be ignored.
-func Fields(err error) (fields map[string]interface{}, ok bool) {
-	var fieldsErr interface{ Fields() map[string]interface{} }
-	if errors.As(err, &fieldsErr) {
-		return fieldsErr.Fields(), true
+func Fields(err error) (map[string]interface{}, bool) {
+	if fe, ok := err.(fields); ok {
+		return fe.Fields(), true
 	}
 	return nil, false
 }
 
+type response interface{ Response() (interface{}, int) }
+
 // Response returns a body and status code to use as a web response.
 // If the error does not implement the Response behavior, it returns
-// 'ok' to false and other parameters should be ignored.
-func Response(err error) (body interface{}, code int, ok bool) {
-	var respErr interface{ Response() (interface{}, int) }
-	if errors.As(err, &respErr) {
-		body, code := respErr.Response()
+// false as third parameter and other parameters should be ignored.
+func Response(err error) (interface{}, int, bool) {
+	if re, ok := err.(response); ok {
+		body, code := re.Response()
 		return body, code, true
 	}
 	return nil, 0, false
@@ -73,7 +73,7 @@ func Errors(log logrus.FieldLogger) web.Middleware {
 
 			// Log the error with the appropriate level.
 			loglvl := log.WithFields(logrus.Fields(fields)).Error
-			if Quiet(err) {
+			if IsQuiet(err) {
 				loglvl = log.WithFields(logrus.Fields(fields)).Info
 			}
 			loglvl("ERROR")
