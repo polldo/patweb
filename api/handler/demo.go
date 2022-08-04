@@ -22,7 +22,9 @@ func Demo() web.Handler {
 		case "mask":
 			// Mask the error in the response but keep it in the logs.
 			err := fmt.Errorf("internal reasons here: wrapping other internal errors")
-			return NewRequestError(err, http.StatusBadRequest, WithMsg("This is a bad request m8!"))
+			err = NewRequestError(err, http.StatusBadRequest, WithMsg("This is a bad request m8!"))
+			// Test effectivity of Unwrap method.
+			return &testError{err}
 
 		case "dont mask":
 			// Keep the whole error in the response.
@@ -46,3 +48,18 @@ func Demo() web.Handler {
 	}
 	return h
 }
+
+// testError is needed to test the effectivity of RequestError `Unwrap` method.
+type testError struct {
+	Err error
+}
+
+func (r *testError) Error() string {
+	return "test error text"
+}
+func (r *testError) Fields() map[string]interface{} {
+	return map[string]interface{}{"test": "ok"}
+}
+
+// try with and without unwrap
+func (e *testError) Unwrap() error { return e.Err }

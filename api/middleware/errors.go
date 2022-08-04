@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/polldo/patweb/api/web"
@@ -16,29 +17,34 @@ type quiet interface{ Quiet() bool }
 // should be returned in the response anyway.
 // If the error does not implement the Queit behavior, it returns false.
 func IsQuiet(err error) bool {
-	qe, ok := err.(quiet)
-	return ok && qe.Quiet()
+	var qe quiet
+	if errors.As(err, &qe) {
+		return qe.Quiet()
+	}
+	return false
 }
 
-type fields interface{ Fields() map[string]interface{} }
+type fielder interface{ Fields() map[string]interface{} }
 
 // Fields extracts fields to be logged together with the error.
 // If the error does not implement the Fields behavior, it returns
 // 'ok' to false and other parameters should be ignored.
-func Fields(err error) (map[string]interface{}, bool) {
-	if fe, ok := err.(fields); ok {
+func Fields(err error) (fields map[string]interface{}, ok bool) {
+	var fe fielder
+	if errors.As(err, &fe) {
 		return fe.Fields(), true
 	}
 	return nil, false
 }
 
-type response interface{ Response() (interface{}, int) }
+type responder interface{ Response() (interface{}, int) }
 
 // Response returns a body and status code to use as a web response.
 // If the error does not implement the Response behavior, it returns
 // false as third parameter and other parameters should be ignored.
 func Response(err error) (interface{}, int, bool) {
-	if re, ok := err.(response); ok {
+	var re responder
+	if errors.As(err, &re) {
 		body, code := re.Response()
 		return body, code, true
 	}

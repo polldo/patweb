@@ -61,11 +61,12 @@ func NewRequestError(err error, status int, opts ...ErrOpt) error {
 	return e
 }
 
+// Unwrap allows to propagate inner error behaviors.
+func (e *RequestError) Unwrap() error { return e.Err }
+
 // Error implements the error interface. It uses the default message of the
 // wrapped error. This is what will be shown in the services' logs.
-func (r *RequestError) Error() string {
-	return r.Err.Error()
-}
+func (r *RequestError) Error() string { return r.Err.Error() }
 
 // Response converts and returns the error in a body and status code
 // to be written as response to vernemq.
@@ -81,11 +82,7 @@ func (r *RequestError) Response() (body interface{}, code int) {
 }
 
 // Quiet indicates whether the error is not very relevant to be logged.
-func (r *RequestError) Quiet() bool {
-	return r.IsQuiet
-}
+func (r *RequestError) Quiet() bool { return r.IsQuiet }
 
 // Fields returns the fields to be logged together with the error.
-func (r *RequestError) Fields() map[string]interface{} {
-	return r.LogFields
-}
+func (r *RequestError) Fields() map[string]interface{} { return r.LogFields }
