@@ -2,54 +2,12 @@ package middleware
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/polldo/patweb/api/web"
+	"github.com/polldo/patweb/api/weberr"
 	"github.com/sirupsen/logrus"
 )
-
-type quiet interface{ Quiet() bool }
-
-// IsQuiet indicates whether the error should not be logged as an error.
-// This is useful to deal with physiological errors - like token expirations - that
-// are not interesting to log as errors (perhaps to avoid triggering any alarms) but
-// should be returned in the response anyway.
-// If the error does not implement the Queit behavior, it returns false.
-func IsQuiet(err error) bool {
-	var qe quiet
-	if errors.As(err, &qe) {
-		return qe.Quiet()
-	}
-	return false
-}
-
-type fielder interface{ Fields() map[string]interface{} }
-
-// Fields extracts fields to be logged together with the error.
-// If the error does not implement the Fields behavior, it returns
-// 'ok' to false and other parameters should be ignored.
-func Fields(err error) (fields map[string]interface{}, ok bool) {
-	var fe fielder
-	if errors.As(err, &fe) {
-		return fe.Fields(), true
-	}
-	return nil, false
-}
-
-type responder interface{ Response() (interface{}, int) }
-
-// Response returns a body and status code to use as a web response.
-// If the error does not implement the Response behavior, it returns
-// false as third parameter and other parameters should be ignored.
-func Response(err error) (interface{}, int, bool) {
-	var re responder
-	if errors.As(err, &re) {
-		body, code := re.Response()
-		return body, code, true
-	}
-	return nil, 0, false
-}
 
 // Errors handles errors coming out of the call chain.
 // This middleware leverages a technique of opaque errors that
@@ -71,7 +29,7 @@ func Errors(log logrus.FieldLogger) web.Middleware {
 				"req_id":  ContextRequestID(ctx),
 				"message": err,
 			}
-			if f, ok := Fields(err); ok {
+			if f, ok := weberr.Fields(err); ok {
 				for k, v := range f {
 					fields[k] = v
 				}
@@ -79,13 +37,13 @@ func Errors(log logrus.FieldLogger) web.Middleware {
 
 			// Log the error with the appropriate level.
 			loglvl := log.WithFields(logrus.Fields(fields)).Error
-			if IsQuiet(err) {
+			if weberr.IsQuiet(err) {
 				loglvl = log.WithFields(logrus.Fields(fields)).Info
 			}
 			loglvl("ERROR")
 
 			// Try to retrieve a response from the error.
-			if body, code, ok := Response(err); ok {
+			if body, code, ok := weberr.Response(err); ok {
 				return web.Respond(ctx, w, body, code)
 			}
 

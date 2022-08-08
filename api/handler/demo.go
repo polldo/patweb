@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/polldo/patweb/api/web"
+	"github.com/polldo/patweb/api/weberr"
 )
 
 // Demo is a simple handler that shows off the various errors behaviors.
@@ -19,28 +20,32 @@ func Demo() web.Handler {
 		}
 
 		switch input.Value {
-		case "mask":
-			// Mask the error in the response but keep it in the logs.
-			err := fmt.Errorf("internal reasons here: wrapping other internal errors")
-			err = NewRequestError(err, http.StatusBadRequest, WithMsg("This is a bad request m8!"))
-			// Test effectivity of Unwrap method.
-			return &testError{err}
 
-		case "dont mask":
-			// Keep the whole error in the response.
+		// Just a request error.
+		case "vanilla":
 			err := errors.New("internal reasons here: wrapping other internal errors")
 			return NewRequestError(err, http.StatusBadRequest)
 
+		// Mask the error in the response with a custom message but keep it in the logs.
+		case "mask with msg":
+			err := fmt.Errorf("internal reasons here: wrapping other internal errors")
+			return NewRequestError(err, http.StatusBadRequest, WithMsg("This is a bad request m8!"))
+
+		// Add fields to error log.
 		case "log fields":
-			// Add fields to error log.
 			err := errors.New("add fields to log the err")
 			f := map[string]interface{}{"description": "this is an additional info"}
 			return NewRequestError(err, http.StatusBadRequest, WithFields(f))
 
+		// Mark the error as 'quiet' to log it as INFO rather than ERR.
 		case "be quiet":
-			// Mark the error as 'quiet' to log it as INFO rather than ERR.
 			err := errors.New("some physiological error, logged as info")
-			return NewRequestError(err, http.StatusBadRequest, Quiet())
+			return NewRequestError(err, http.StatusBadRequest, WithQuiet(true))
+
+		// Wrap a normal error with quiet behavior.
+		case "non responder but quiet error":
+			err := errors.New("some normal error with quiet behavior")
+			return weberr.Wrap(err, weberr.WithQuiet(true))
 
 		default:
 			return web.Respond(ctx, w, struct{}{}, http.StatusOK)
@@ -48,18 +53,3 @@ func Demo() web.Handler {
 	}
 	return h
 }
-
-// testError is needed to test the effectivity of RequestError `Unwrap` method.
-type testError struct {
-	Err error
-}
-
-func (r *testError) Error() string {
-	return "test error text"
-}
-func (r *testError) Fields() map[string]interface{} {
-	return map[string]interface{}{"test": "ok"}
-}
-
-// try with and without unwrap
-func (e *testError) Unwrap() error { return e.Err }
